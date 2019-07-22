@@ -1,6 +1,6 @@
 {
   "name": "@hnw/easydes",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Non-serious crypto library",
   "main": "easydes.js",
   "private": false,
