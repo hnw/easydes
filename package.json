@@ -1,0 +1,25 @@
+{
+  "name": "@hnw/easydes",
+  "version": "0.0.1",
+  "description": "Non-serious crypto library",
+  "main": "easydes.js",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hnw/easydes.git"
+  },
+  "author": "hnw",
+  "license": "MIT",
+  "bin": {
+    "easydes": "./bin/cli.js"
+  },
+  "devDependencies": {
+    "ava": "^2.2.0"
+  },
+  "dependencies": {
+    "yargs": "*"
+  },
+  "scripts": {
+    "test": "ava --verbose"
+  }
+}
