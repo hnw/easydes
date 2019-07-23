@@ -3,11 +3,26 @@
 const crypto = require('crypto');
 const os = require('os');
 const fs = require('fs');
-const IV_LENGTH = 8;
+const IV_LENGTH = {
+  bf: 8,
+  des: 8,
+  'des3': 8,
+  'aes-128-cbc': 16
+}
+const KEY_LENGTH = {
+  bf: 8,
+  des: 8,
+  'des3': 24,
+  'aes-128-cbc': 16
+}
 
 class Easydes {
   constructor(password) {
-    this._password = password || Easydes.getPasswordFromFile();
+    this._algorithm = 'des';
+    let str = '';
+    str += password || Easydes.getPasswordFromFile();
+    
+    this._password = str.substring(0, KEY_LENGTH[this._algorithm]);
   }
 
   static getPasswordFromFile(path) {
@@ -61,8 +76,9 @@ class Easydes {
   }
 
   _encryptString(rawText) {
-    let iv = crypto.randomBytes(IV_LENGTH);
-    let cipher = crypto.createCipheriv('bf', this._password, iv);
+    let iv = crypto.randomBytes(IV_LENGTH[this._algorithm]);
+    let password = this._password.substring(0, KEY_LENGTH[this._algorithm]);
+    let cipher = crypto.createCipheriv(this._algorithm, password, iv);
     let encrypted = cipher.update(rawText);
     encrypted = Buffer.concat([iv, encrypted, cipher.final()]);
     return this._base64Encode(encrypted);
@@ -79,7 +95,7 @@ class Easydes {
     }
     let iv = decoded.slice(0, 8);
     let encrypted = decoded.slice(8, len - (len % 8));
-    let decipher = crypto.createDecipheriv('bf', this._password, iv);
+    let decipher = crypto.createDecipheriv(this._algorithm, this._password, iv);
     let decrypted;
     try {
       decrypted = decipher.update(encrypted);
