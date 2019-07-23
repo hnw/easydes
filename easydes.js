@@ -3,26 +3,62 @@
 const crypto = require('crypto');
 const os = require('os');
 const fs = require('fs');
-const IV_LENGTH = {
-  bf: 8,
-  des: 8,
-  'des3': 8,
-  'aes-128-cbc': 16
+const CIPHER = {
+  'b': 'bf-cbc',
+  'd': 'des-ede3-cbc',
+  'a': 'aes-256-cbc',
+}
+const CIPHER_ID = {
+  'bf': 'b',
+  'blowfish': 'b',
+  'des': 'd',
+  '3des': 'd',
+  'des3': 'd',
+  'aes': 'a',
+}
+const BLOCK_SIZE = {
+  'bf-cbc': 8,
+  'des-ede3-cbc': 8,
+  'aes-256-cbc': 16,
 }
 const KEY_LENGTH = {
-  bf: 8,
-  des: 8,
-  'des3': 24,
-  'aes-128-cbc': 16
+  'bf-cbc': 32,
+  'des-ede3-cbc': 24,
+  'aes-256-cbc': 32,
 }
 
 class Easydes {
-  constructor(password) {
-    this._algorithm = 'des';
-    let str = '';
-    str += password || Easydes.getPasswordFromFile();
-    
-    this._password = str.substring(0, KEY_LENGTH[this._algorithm]);
+  constructor(spec) {
+    let algorithm = '';
+    let password = '';
+    if (typeof spec === 'string') {
+      password = String(spec || Easydes.getPasswordFromFile());
+      const cipherId = password[0];
+      if (!CIPHER.hasOwnProperty(cipherId)) {
+        throw new Error('Unexpected Secret key length. Try "$(npm bin)/easydes --keygen"');
+      }
+      algorithm = CIPHER[cipherId];
+      password = password.substring(1, KEY_LENGTH[algorithm]+1);
+    } else if (typeof spec === 'object') {
+	({algorithm,password} = spec);
+    }
+    this._algorithm = algorithm;
+    this._password = password;
+  }
+
+  static getCipherId(algorithm) {
+    if (!CIPHER_ID.hasOwnProperty(algorithm)) {
+      return '';
+    }
+    return CIPHER_ID[algorithm];
+  }
+
+  static getKeyLength(algorithm) {
+    const cipherId = Easydes.getCipherId(algorithm);
+    if (!cipherId) {
+      return 0;
+    }
+    return KEY_LENGTH[CIPHER[cipherId]];
   }
 
   static getPasswordFromFile(path) {
@@ -76,8 +112,10 @@ class Easydes {
   }
 
   _encryptString(rawText) {
-    let iv = crypto.randomBytes(IV_LENGTH[this._algorithm]);
-    let password = this._password.substring(0, KEY_LENGTH[this._algorithm]);
+    const blockSize = BLOCK_SIZE[this._algorithm];
+    const keyLength = KEY_LENGTH[this._algorithm];
+    let iv = crypto.randomBytes(blockSize);
+    let password = this._password.substring(0, keyLength);
     let cipher = crypto.createCipheriv(this._algorithm, password, iv);
     let encrypted = cipher.update(rawText);
     encrypted = Buffer.concat([iv, encrypted, cipher.final()]);
@@ -93,8 +131,9 @@ class Easydes {
     if (len < 16) {
       return cipherText;
     }
-    let iv = decoded.slice(0, 8);
-    let encrypted = decoded.slice(8, len - (len % 8));
+    const blockSize = BLOCK_SIZE[this._algorithm]
+    let iv = decoded.slice(0, blockSize);
+    let encrypted = decoded.slice(blockSize, len - (len % blockSize));
     let decipher = crypto.createDecipheriv(this._algorithm, this._password, iv);
     let decrypted;
     try {
